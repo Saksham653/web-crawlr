@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Crawlr v2 — Universal Scraper</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--bg2:#111;--surface:#161616;--surface2:#1e1e1e;
+  --border:#242424;--muted:#3a3a3a;--dim:#666;--body:#b8b8b8;--head:#eeebe5;
+  --accent:#7eb8a4;--accent2:#4a8c78;--gold:#c9a96e;--red:#b85c52;--green:#5a9470;--purple:#9b7ecb;
+  --syne:'Syne',sans-serif;--lora:'Lora',serif;--mono:'Fira Code',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--body);font-family:var(--syne);font-size:13px;line-height:1.6;min-height:100vh}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--muted);border-radius:2px}
+
+/* ── HERO ─────────────────────────────── */
+.hero{min-height:34vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 40px 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:48px 48px;opacity:.2;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%)}
+.hero-nav{position:absolute;top:18px;right:24px;z-index:2;display:flex;gap:8px}
+.hnbtn{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;background:none;border:1px solid var(--border);border-radius:5px;padding:6px 14px;cursor:pointer;transition:all .15s;color:var(--dim)}
+.hnbtn:hover{border-color:var(--muted);color:var(--body)}
+.hnbtn.how{border-color:rgba(201,169,110,.3);color:var(--gold)}.hnbtn.how:hover{background:rgba(201,169,110,.08);border-color:var(--gold)}
+.hero-inner{position:relative;z-index:1;width:100%;max-width:700px;text-align:center}
+.hero-tag{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px}
+.hero-title{font-family:var(--syne);font-size:clamp(28px,6vw,52px);font-weight:800;color:var(--head);letter-spacing:-.04em;line-height:1;margin-bottom:4px}
+.hero-title em{font-style:italic;font-family:var(--lora);color:var(--accent);font-weight:400}
+.hero-sub{font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:32px;letter-spacing:.04em}
+.url-bar{display:flex;width:100%;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;background:var(--surface);transition:border-color .2s,box-shadow .2s}
+.url-bar:focus-within{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(74,140,120,.12)}
+.url-pfx{font-family:var(--mono);font-size:11px;color:var(--dim);padding:13px 12px 13px 16px;white-space:nowrap;border-right:1px solid var(--border);background:var(--bg2);display:flex;align-items:center}
+#url-input{flex:1;background:transparent;border:none;outline:none;color:var(--head);font-family:var(--mono);font-size:12px;padding:13px 16px}
+#url-input::placeholder{color:var(--muted)}
+#scrape-btn{background:var(--accent2);border:none;border-left:1px solid var(--border);color:#fff;font-family:var(--syne);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:13px 22px;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
+#scrape-btn:hover{background:var(--accent)}
+#scrape-btn:active{transform:scale(.97)}
+#scrape-btn:disabled{background:var(--muted);cursor:not-allowed}
+
+/* ── STATUS ───────────────────────────── */
+#sbar{display:none;font-family:var(--mono);font-size:11px;color:var(--dim);padding:10px 40px;border-bottom:1px solid var(--border);align-items:center;gap:12px;background:var(--bg2)}
+#sbar.vis{display:flex}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+#sbar.done .sdot{animation:none;background:var(--green)}
+#sbar.err .sdot{animation:none;background:var(--red)}
+
+/* ── STATS ────────────────────────────── */
+#stats{display:none;padding:14px 40px;border-bottom:1px solid var(--border);background:var(--bg2)}
+#stats.vis{display:flex;gap:0}
+.ss{flex:1;display:flex;flex-direction:column;gap:2px;padding:0 20px 0 0;border-right:1px solid var(--border);margin-right:20px}
+.ss:last-child{border-right:none;margin-right:0}
+.ss-v{font-family:var(--lora);font-size:20px;color:var(--head);line-height:1}
+.ss-l{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+
+/* ── TOOLBAR ──────────────────────────── */
+#toolbar{display:none;padding:11px 40px;border-bottom:1px solid var(--border);background:var(--bg);align-items:center;gap:8px;flex-wrap:wrap}
+#toolbar.vis{display:flex}
+.tbtn{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:7px 13px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
+.tbtn:hover{border-color:var(--muted);color:var(--body)}
+.tjson{border-color:rgba(201,169,110,.25);color:var(--gold)}.tjson:hover{background:rgba(201,169,110,.07);border-color:var(--gold)}
+.tcsv{border-color:rgba(90,148,112,.25);color:var(--green)}.tcsv:hover{background:rgba(90,148,112,.07);border-color:var(--green)}
+.tmd{border-color:rgba(126,184,164,.25);color:var(--accent)}.tmd:hover{background:rgba(126,184,164,.07);border-color:var(--accent)}
+.thtml{border-color:rgba(126,184,164,.2);color:var(--accent)}.thtml:hover{background:rgba(126,184,164,.06);border-color:var(--accent)}
+.ttrack{border-color:rgba(155,126,203,.25);color:var(--purple)}.ttrack:hover{background:rgba(155,126,203,.07);border-color:var(--purple)}
+.tsep{width:1px;height:26px;background:var(--border);margin:0 3px}
+.tlbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+
+/* ── TABS ─────────────────────────────── */
+#tabsbar{display:none;padding:0 40px;border-bottom:1px solid var(--border);overflow-x:auto}
+#tabsbar.vis{display:flex}
+.tab{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding:13px 16px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s}
+.tab:hover{color:var(--body)}.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tc{display:inline-block;margin-left:5px;font-size:9px;background:var(--surface2);border-radius:3px;padding:1px 5px;color:var(--dim)}
+.tab.on .tc{background:rgba(126,184,164,.15);color:var(--accent2)}
+
+/* ── CONTENT ──────────────────────────── */
+#content{padding:28px 40px 80px;display:none}
+#content.vis{display:block}
+.panel{display:none}.panel.on{display:block}
+
+/* ── CARDS / GRID ─────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.card{background:var(--surface);padding:20px;display:flex;flex-direction:column;gap:9px;position:relative;cursor:default;transition:background .1s}
+.card:hover{background:var(--surface2)}
+.ctype{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)}
+.cmain{font-family:var(--lora);font-size:14px;color:var(--head);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.csub{font-family:var(--mono);font-size:10px;color:var(--dim);word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cbadge{position:absolute;top:11px;right:11px;font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:3px}
+.bh1{background:rgba(201,169,110,.12);color:var(--gold);border:1px solid rgba(201,169,110,.2)}
+.bh2{background:rgba(126,184,164,.1);color:var(--accent);border:1px solid rgba(126,184,164,.2)}
+.bh3,.bh4,.bh5,.bh6{background:rgba(255,255,255,.04);color:var(--dim);border:1px solid var(--border)}
+.bprice{background:rgba(90,148,112,.12);color:var(--green);border:1px solid rgba(90,148,112,.25)}
+.bext{background:rgba(184,92,82,.1);color:var(--red);border:1px solid rgba(184,92,82,.2)}
+.igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.icard{background:var(--surface);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;transition:background .1s}
+.icard:hover{background:var(--surface2)}
+.ithumb{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--bg2);display:block}
+.iinfo{padding:10px 13px;display:flex;flex-direction:column;gap:3px}
+.ialt{font-family:var(--lora);font-size:12px;color:var(--body);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.isrc{font-family:var(--mono);font-size:9px;color:var(--dim);word-break:break-all;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.mtbl{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mtbl tr{border-bottom:1px solid var(--border)}.mtbl tr:last-child{border-bottom:none}
+.mtbl td{padding:10px 15px;vertical-align:top}
+.mtbl td:first-child{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;width:180px;background:var(--bg2);border-right:1px solid var(--border)}
+.mtbl td:last-child{font-size:12px;color:var(--body);background:var(--surface)}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:26px}
+.sh:first-child{margin-top:0}
+.sh-t{font-family:var(--syne);font-size:11px;font-weight:600;color:var(--head);text-transform:uppercase;letter-spacing:.08em}
+.psearch{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--body);font-family:var(--mono);font-size:12px;padding:8px 13px;outline:none;width:100%;max-width:320px;transition:border-color .15s;margin-bottom:14px}
+.psearch:focus{border-color:var(--accent2)}.psearch::placeholder{color:var(--muted)}
+.empty{display:flex;align-items:center;justify-content:center;padding:56px 20px;color:var(--dim);font-family:var(--mono);font-size:12px;grid-column:1/-1}
+.ovcols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.ovc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:17px;display:flex;flex-direction:column;gap:5px}
+.ovcl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+.ovcv{font-family:var(--lora);font-size:15px;color:var(--head);line-height:1.4}
+.ovcurl{font-family:var(--mono);font-size:10px;color:var(--accent2);word-break:break-all}
+
+/* ── TRACKER ──────────────────────────── */
+.trwrap{display:flex;flex-direction:column;gap:18px}
+.trform{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.trg{display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px}
+.trg label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+.trinput{background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--head);font-family:var(--mono);font-size:12px;padding:8px 11px;outline:none;width:100%;transition:border-color .15s}
+.trinput:focus{border-color:var(--accent2)}.trinput::placeholder{color:var(--muted)}
+.traddbtn{background:rgba(155,126,203,.14);border:1px solid rgba(155,126,203,.3);border-radius:5px;color:var(--purple);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:9px 16px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.traddbtn:hover{background:rgba(155,126,203,.24)}
+.traf{display:none;padding:12px 15px;background:rgba(155,126,203,.06);border:1px solid rgba(155,126,203,.2);border-radius:7px;font-family:var(--mono);font-size:11px;color:var(--purple)}
+.trafbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.trafbtn{background:var(--bg2);border:1px solid rgba(155,126,203,.25);border-radius:4px;color:var(--purple);font-family:var(--mono);font-size:11px;padding:4px 10px;cursor:pointer;transition:all .15s}
+.trafbtn:hover{background:rgba(155,126,203,.1)}
+.trlist{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.trrow{background:var(--surface);padding:15px 18px;display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;transition:background .1s}
+.trrow:hover{background:var(--surface2)}
+.triname{font-family:var(--lora);font-size:14px;color:var(--head)}
+.triurl{font-family:var(--mono);font-size:9px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
+.trihist{font-family:var(--mono);font-size:9px;color:var(--dim);display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:3px}
+.trihist span{padding:1px 6px;background:var(--bg2);border-radius:3px;border:1px solid var(--border)}
+.triprice{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.tricur{font-family:var(--lora);font-size:18px;color:var(--head)}
+.tritgt{font-family:var(--mono);font-size:9px;color:var(--dim)}
+.delta{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.dup{background:rgba(184,92,82,.12);color:var(--red);border:1px solid rgba(184,92,82,.2)}
+.ddn{background:rgba(90,148,112,.12);color:var(--green);border:1px solid rgba(90,148,112,.2)}
+.deq{background:rgba(255,255,255,.04);color:var(--dim);border:1px solid var(--border)}
+.triactions{display:flex;gap:5px}
+.tribtn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);cursor:pointer;font-size:12px;padding:4px 8px;transition:all .1s;font-family:var(--mono)}
+.tribtn:hover{border-color:var(--muted);color:var(--body)}.tribtn.del:hover{border-color:var(--red);color:var(--red)}
+.spark{display:flex;align-items:flex-end;gap:2px;height:24px;margin-top:4px}
+.sbar{width:5px;border-radius:2px 2px 0 0;background:var(--muted)}
+.trempty{padding:36px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim)}
+
+/* ── EXPORT MODAL ─────────────────────── */
+#emod-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(5px)}
+#emod-bg.open{display:flex}
+#emod{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:100%;max-width:500px;padding:26px;display:flex;flex-direction:column;gap:16px;animation:su .18s ease;max-height:90vh;overflow-y:auto}
+.emhdr{display:flex;align-items:center;justify-content:space-between}
+.emttl{font-family:var(--syne);font-size:15px;font-weight:600;color:var(--head)}
+.emx{background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);cursor:pointer;font-size:15px;padding:3px 8px;transition:all .1s}
+.emx:hover{border-color:var(--muted);color:var(--body)}
+.emlbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:7px}
+.emcks{display:flex;flex-wrap:wrap;gap:7px}
+.emck{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--body);cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);transition:all .15s;user-select:none}
+.emck:hover{border-color:var(--muted)}.emck.on{border-color:var(--accent2);background:rgba(126,184,164,.07);color:var(--accent)}
+.emck input{accent-color:var(--accent);width:12px;height:12px;cursor:pointer}
+.emfmts{display:flex;gap:7px}
+.emf{flex:1;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);text-align:center;cursor:pointer;transition:all .15s}
+.emf:hover{border-color:var(--muted)}.emf.on{border-color:var(--accent2);background:rgba(126,184,164,.07)}
+.emfn{font-family:var(--syne);font-size:11px;font-weight:600;color:var(--head)}
+.emfd{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
+.emprev{font-family:var(--mono);font-size:10px;color:var(--dim);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:11px;max-height:110px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.emdl{background:var(--accent2);border:none;border-radius:6px;color:#fff;font-family:var(--syne);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:12px 24px;cursor:pointer;width:100%;transition:background .15s}
+.emdl:hover{background:var(--accent)}
+
+/* ── ABOUT MODAL ──────────────────────── */
+#amod-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;align-items:flex-start;justify-content:center;padding:28px 20px 40px;backdrop-filter:blur(6px);overflow-y:auto}
+#amod-bg.open{display:flex}
+#amod{background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:740px;display:flex;flex-direction:column;animation:su .2s ease;margin:auto}
+@keyframes su{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+.am-hero{padding:36px 40px 28px;background:var(--bg);border-radius:12px 12px 0 0;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.am-hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.15;mask-image:radial-gradient(ellipse 100% 100% at 0% 0%,black 0%,transparent 65%)}
+.am-close{position:absolute;top:16px;right:16px;background:none;border:1px solid var(--border);border-radius:5px;color:var(--dim);cursor:pointer;font-size:15px;padding:3px 9px;transition:all .1s;z-index:1}
+.am-close:hover{border-color:var(--muted);color:var(--body)}
+.am-tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:var(--accent2);margin-bottom:10px;position:relative;z-index:1}
+.am-title{font-family:var(--syne);font-size:30px;font-weight:800;color:var(--head);letter-spacing:-.04em;line-height:1;margin-bottom:8px;position:relative;z-index:1}
+.am-title em{font-style:italic;font-family:var(--lora);color:var(--accent);font-weight:400}
+.am-desc{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.75;max-width:520px;position:relative;z-index:1}
+.am-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px;position:relative;z-index:1}
+.atag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.07em;padding:3px 9px;border-radius:3px;border:1px solid}
+.atag.t{color:var(--accent);border-color:rgba(126,184,164,.3);background:rgba(126,184,164,.08)}
+.atag.g{color:var(--gold);border-color:rgba(201,169,110,.3);background:rgba(201,169,110,.08)}
+.atag.p{color:var(--purple);border-color:rgba(155,126,203,.3);background:rgba(155,126,203,.08)}
+.atag.gr{color:var(--green);border-color:rgba(90,148,112,.3);background:rgba(90,148,112,.08)}
+
+.am-body{display:flex;flex-direction:column}
+.am-sec{border-bottom:1px solid var(--border);padding:28px 40px}
+.am-sec:last-child{border-bottom:none}
+.am-secnum{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.am-sectitle{font-family:var(--syne);font-size:15px;font-weight:600;color:var(--head);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.am-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ic-t{background:rgba(126,184,164,.12);color:var(--accent)}
+.ic-g{background:rgba(201,169,110,.12);color:var(--gold)}
+.ic-p{background:rgba(155,126,203,.12);color:var(--purple)}
+.ic-gr{background:rgba(90,148,112,.12);color:var(--green)}
+.ic-r{background:rgba(184,92,82,.12);color:var(--red)}
+
+.steps{display:flex;flex-direction:column;gap:14px}
+.step{display:flex;gap:14px;align-items:flex-start}
+.step-n{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--dim);flex-shrink:0;margin-top:2px}
+.step-b{flex:1}
+.step-h{font-family:var(--syne);font-size:13px;font-weight:500;color:var(--head);margin-bottom:4px}
+.step-t{font-size:12px;color:var(--body);line-height:1.7}
+.code-block{font-family:var(--mono);font-size:11px;color:var(--accent2);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px 14px;margin-top:9px;display:block;white-space:pre-wrap;word-break:break-all;line-height:1.7}
+.inline-code{font-family:var(--mono);font-size:11px;color:var(--accent2);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:1px 5px}
+
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.col-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px 16px}
+.col-title{font-family:var(--syne);font-size:11px;font-weight:600;color:var(--head);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.col-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.col-card ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}
+.col-card li{font-family:var(--mono);font-size:10px;color:var(--dim);display:flex;gap:7px;line-height:1.5}
+.col-card li::before{content:'→';color:var(--muted);flex-shrink:0}
+.col-card li strong{color:var(--body)}
+
+.warn{background:rgba(184,92,82,.06);border:1px solid rgba(184,92,82,.2);border-radius:7px;padding:14px 16px;display:flex;gap:12px;margin-top:16px}
+.warn-ico{color:var(--red);font-size:15px;flex-shrink:0;margin-top:1px}
+.warn-txt{font-size:12px;color:var(--body);line-height:1.7}.warn-txt strong{color:var(--red)}
+.tip{background:rgba(126,184,164,.05);border:1px solid rgba(126,184,164,.15);border-radius:7px;padding:14px 16px;display:flex;gap:12px;margin-top:16px}
+.tip-ico{color:var(--accent);font-size:14px;flex-shrink:0;margin-top:1px}
+.tip-txt{font-size:12px;color:var(--body);line-height:1.7}.tip-txt strong{color:var(--accent)}
+
+.stacklist{display:flex;flex-direction:column;gap:8px}
+.stackrow{display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:6px}
+.stack-lbl{font-family:var(--syne);font-size:12px;font-weight:500;color:var(--head);min-width:130px}
+.stack-val{font-family:var(--mono);font-size:10px;color:var(--dim);flex:1}
+.stack-badge{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:3px}
+
+.author-card{display:flex;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px}
+.author-av{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--accent2) 0%,var(--purple) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--syne);font-size:20px;font-weight:800;color:#fff;flex-shrink:0}
+.author-name{font-family:var(--syne);font-size:15px;font-weight:600;color:var(--head);margin-bottom:3px}
+.author-email{font-family:var(--mono);font-size:10px;color:var(--accent2);margin-bottom:7px}
+.author-bio{font-size:12px;color:var(--body);line-height:1.65}
+
+/* ── ERROR ────────────────────────────── */
+#err{display:none;margin:26px 40px;padding:17px 20px;border:1px solid rgba(184,92,82,.3);border-radius:7px;background:rgba(184,92,82,.06);color:var(--red);font-family:var(--mono);font-size:12px;line-height:1.8}
+#err.on{display:block}
+
+/* ── FOOTER ───────────────────────────── */
+footer{border-top:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.fl{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.8}.fl strong{color:var(--dim)}
+.fr{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;line-height:1.8}
+
+@media(max-width:640px){
+  .hero,.am-sec,#sbar,#stats,#toolbar,#tabsbar,#content,footer{padding-left:18px;padding-right:18px}
+  .am-hero{padding-left:22px;padding-right:22px}
+  .ovcols,.twocol{grid-template-columns:1fr}
+  .trrow{grid-template-columns:1fr;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HERO ════════════════════════════════════════════════ -->
+<div class="hero">
+  <nav class="hero-nav">
+    <button class="hnbtn how" id="btn-about">? How to Use</button>
+  </nav>
+  <div class="hero-inner">
+    <div class="hero-tag">// Universal Web Scraper v2</div>
+    <h1 class="hero-title">Crawl<em>r</em></h1>
+    <p class="hero-sub">paste any url → extract everything → track prices → export clean data</p>
+    <div class="url-bar">
+      <div class="url-pfx">https://</div>
+      <input type="text" id="url-input" placeholder="example.com or paste a full URL…" autocomplete="off" spellcheck="false"/>
+      <button id="scrape-btn">Scrape ↵</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STATUS ══════════════════════════════════════════════ -->
+<div id="sbar"><div class="sdot"></div><span id="stxt">Fetching…</span></div>
+<div id="err"></div>
+
+<!-- ══ STATS ═══════════════════════════════════════════════ -->
+<div id="stats">
+  <div class="ss"><div class="ss-v" id="st-h">0</div><div class="ss-l">Headings</div></div>
+  <div class="ss"><div class="ss-v" id="st-p">0</div><div class="ss-l">Paragraphs</div></div>
+  <div class="ss"><div class="ss-v" id="st-l">0</div><div class="ss-l">Links</div></div>
+  <div class="ss"><div class="ss-v" id="st-i">0</div><div class="ss-l">Images</div></div>
+  <div class="ss"><div class="ss-v" id="st-pr">0</div><div class="ss-l">Prices</div></div>
+</div>
+
+<!-- ══ TOOLBAR ═════════════════════════════════════════════ -->
+<div id="toolbar">
+  <span class="tlbl">Export</span>
+  <button class="tbtn tjson" id="btn-json"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>JSON</button>
+  <button class="tbtn tcsv" id="btn-csv"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>CSV</button>
+  <button class="tbtn tmd" id="btn-md"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Markdown</button>
+  <button class="tbtn thtml" id="btn-html"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>HTML Report</button>
+  <div class="tsep"></div>
+  <span class="tlbl">Tracker</span>
+  <button class="tbtn ttrack" id="btn-track"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Price Tracker</button>
+</div>
+
+<!-- ══ TABS ════════════════════════════════════════════════ -->
+<div id="tabsbar">
+  <div class="tab on" data-p="overview">Overview</div>
+  <div class="tab" data-p="headings">Headings <span class="tc" id="tc-h">0</span></div>
+  <div class="tab" data-p="paragraphs">Text <span class="tc" id="tc-p">0</span></div>
+  <div class="tab" data-p="links">Links <span class="tc" id="tc-l">0</span></div>
+  <div class="tab" data-p="images">Images <span class="tc" id="tc-i">0</span></div>
+  <div class="tab" data-p="prices">Prices <span class="tc" id="tc-pr">0</span></div>
+  <div class="tab" data-p="meta">Meta <span class="tc" id="tc-m">0</span></div>
+  <div class="tab" data-p="tracker"><svg style="display:inline;margin-right:4px;vertical-align:-2px" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tracker <span class="tc" id="tc-tr">0</span></div>
+</div>
+
+<!-- ══ CONTENT ══════════════════════════════════════════════ -->
+<div id="content">
+
+  <div class="panel on" id="panel-overview">
+    <div class="ovcols">
+      <div class="ovc"><div class="ovcl">Page Title</div><div class="ovcv" id="ov-title">—</div></div>
+      <div class="ovc"><div class="ovcl">URL</div><div class="ovcurl" id="ov-url">—</div></div>
+      <div class="ovc" style="grid-column:1/-1"><div class="ovcl">Description</div><div class="ovcv" id="ov-desc" style="font-size:13px;color:var(--body)">—</div></div>
+    </div>
+    <div class="sh"><div class="sh-t">Top Headings</div></div>
+    <div id="ov-heads" class="grid"></div>
+    <div id="ov-prsec" style="display:none">
+      <div class="sh" style="margin-top:22px"><div class="sh-t">Prices Detected</div></div>
+      <div id="ov-prices" class="grid"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-headings"><input class="psearch" id="sch-h" placeholder="Search headings…"/><div id="g-heads" class="grid"></div></div>
+  <div class="panel" id="panel-paragraphs"><input class="psearch" id="sch-p" placeholder="Search text…"/><div id="g-paras" class="grid"></div></div>
+  <div class="panel" id="panel-links"><input class="psearch" id="sch-l" placeholder="Search links…"/><div id="g-links" class="grid"></div></div>
+  <div class="panel" id="panel-images"><input class="psearch" id="sch-i" placeholder="Search alt text…"/><div id="g-imgs" class="igrid"></div></div>
+  <div class="panel" id="panel-prices"><div id="g-prices" class="grid"></div></div>
+  <div class="panel" id="panel-meta"><table class="mtbl" id="t-meta"><tbody></tbody></table></div>
+
+  <div class="panel" id="panel-tracker">
+    <div class="trwrap">
+      <div class="trform">
+        <div class="trg"><label>Product Name</label><input class="trinput" id="tr-name" placeholder="e.g. Sony WH-1000XM5"/></div>
+        <div class="trg"><label>URL</label><input class="trinput" id="tr-url" placeholder="https://…"/></div>
+        <div class="trg" style="max-width:150px"><label>Target Price</label><input class="trinput" id="tr-target" type="number" placeholder="e.g. 24999"/></div>
+        <button class="traddbtn" id="tr-add">+ Add Item</button>
+      </div>
+      <div class="traf" id="tr-af"><strong>Prices detected on this page.</strong> Click to auto-fill:<div class="trafbtns" id="tr-afbtns"></div></div>
+      <div>
+        <div class="sh">
+          <div class="sh-t">Tracked Items <span id="tr-cnt" style="color:var(--dim);font-weight:400;font-family:var(--mono);font-size:12px">0</span></div>
+          <div style="display:flex;gap:7px">
+            <button class="tbtn" id="tr-rfall" style="font-size:9px;padding:5px 10px">↻ Refresh All</button>
+            <button class="tbtn tcsv" id="tr-exp" style="font-size:9px;padding:5px 10px">↓ Export CSV</button>
+          </div>
+        </div>
+        <div id="tr-list" class="trlist"><div class="trempty">No items yet. Add a product above.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- ══ EXPORT MODAL ═════════════════════════════════════════ -->
+<div id="emod-bg">
+  <div id="emod">
+    <div class="emhdr"><div class="emttl">Export Data</div><button class="emx" id="em-x">✕</button></div>
+    <div><div class="emlbl">Sections to include</div>
+      <div class="emcks">
+        <label class="emck on"><input type="checkbox" value="overview" checked>Overview</label>
+        <label class="emck on"><input type="checkbox" value="headings" checked>Headings</label>
+        <label class="emck on"><input type="checkbox" value="paragraphs" checked>Paragraphs</label>
+        <label class="emck on"><input type="checkbox" value="links" checked>Links</label>
+        <label class="emck on"><input type="checkbox" value="images" checked>Images</label>
+        <label class="emck on"><input type="checkbox" value="prices" checked>Prices</label>
+        <label class="emck on"><input type="checkbox" value="meta" checked>Meta Tags</label>
+      </div>
+    </div>
+    <div><div class="emlbl">Format</div>
+      <div class="emfmts">
+        <div class="emf on" data-fmt="json"><div class="emfn">JSON</div><div class="emfd">Full structured</div></div>
+        <div class="emf" data-fmt="csv"><div class="emfn">CSV</div><div class="emfd">Spreadsheet</div></div>
+        <div class="emf" data-fmt="markdown"><div class="emfn">Markdown</div><div class="emfd">Readable report</div></div>
+        <div class="emf" data-fmt="html"><div class="emfn">HTML</div><div class="emfd">Standalone page</div></div>
+      </div>
+    </div>
+    <div><div class="emlbl">Preview</div><div class="emprev" id="em-prev">Scrape a URL first…</div></div>
+    <button class="emdl" id="em-dl">↓ Download</button>
+  </div>
+</div>
+
+<!-- ══ ABOUT MODAL ══════════════════════════════════════════ -->
+<div id="amod-bg">
+  <div id="amod">
+
+    <!-- Hero -->
+    <div class="am-hero">
+      <button class="am-close" id="amod-close">✕</button>
+      <div class="am-tag">// Documentation &amp; Guide</div>
+      <div class="am-title">Using Crawl<em>r</em></div>
+      <div class="am-desc">Everything you need to know — from scraping your first page to exporting clean structured data and monitoring prices over time. Read through once and you'll know the whole tool.</div>
+      <div class="am-tags">
+        <span class="atag t">Web Scraper</span>
+        <span class="atag g">Price Tracker</span>
+        <span class="atag p">4 Export Formats</span>
+        <span class="atag gr">No Dependencies</span>
+      </div>
+    </div>
+
+    <div class="am-body">
+
+      <!-- 01 Quick Start -->
+      <div class="am-sec">
+        <div class="am-secnum">01 — Quick Start</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-t"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          Scrape Any Page in 3 Steps
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-b">
+              <div class="step-h">Paste any URL into the bar at the top</div>
+              <div class="step-t">Type the full URL or just the domain — Crawlr adds <span class="inline-code">https://</span> automatically. Works with any publicly accessible webpage. Examples: <span class="inline-code">wikipedia.org</span> or <span class="inline-code">https://github.com/torvalds/linux</span></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-b">
+              <div class="step-h">Click Scrape ↵ or press Enter</div>
+              <div class="step-t">Crawlr automatically tries three CORS proxies in order — <span class="inline-code">allorigins.win</span> → <span class="inline-code">corsproxy.io</span> → <span class="inline-code">codetabs.com</span>. The status bar shows which proxy is active. Usually completes in 2–6 seconds.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-b">
+              <div class="step-h">Browse the results across 7 tabs</div>
+              <div class="step-t">Results appear across Overview, Headings, Text, Links, Images, Prices, Meta, and Tracker tabs. Every tab has a live search bar. Click any link card to open it. The stats bar at the top shows counts at a glance.</div>
+            </div>
+          </div>
+        </div>
+        <div class="tip"><div class="tip-ico">💡</div><div class="tip-txt"><strong>Best results on:</strong> Wikipedia, GitHub repos, Hacker News, news articles, documentation pages, and any site with standard server-rendered HTML. The more structured the HTML, the richer the extraction.</div></div>
+      </div>
+
+      <!-- 02 What it extracts -->
+      <div class="am-sec">
+        <div class="am-secnum">02 — Extraction</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          What Gets Pulled from Every Page
+        </div>
+        <div class="twocol">
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--accent)"></div>Content</div>
+            <ul>
+              <li><strong>Headings</strong> — all h1–h6, each badged with level</li>
+              <li><strong>Paragraphs</strong> — all &lt;p&gt; text over 40 characters</li>
+              <li><strong>Images</strong> — src URL + alt text, with thumbnail</li>
+              <li><strong>Page title</strong> — from &lt;title&gt; or og:title</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--gold)"></div>Structured Data</div>
+            <ul>
+              <li><strong>Links</strong> — every href, internal vs external flagged</li>
+              <li><strong>Prices</strong> — regex-matched ₹&nbsp;$&nbsp;£&nbsp;€&nbsp;¥ amounts</li>
+              <li><strong>Meta tags</strong> — all name/property + content pairs</li>
+              <li><strong>Open Graph</strong> — og:title, og:image, og:description</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tip" style="margin-top:14px"><div class="tip-ico">💡</div><div class="tip-txt"><strong>Prices are parsed with a numeric value</strong> too, not just raw text — so ₹1,29,900 becomes both a display string and the number <span class="inline-code">129900</span>, which is what the price tracker compares against your target.</div></div>
+      </div>
+
+      <!-- 03 Price Tracker -->
+      <div class="am-sec">
+        <div class="am-secnum">03 — Price Tracker</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          Monitor Any Product Price Over Time
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-b">
+              <div class="step-h">Scrape the product page first</div>
+              <div class="step-t">After scraping, if prices are detected, quick-tap buttons appear at the top of the Tracker tab. Clicking one auto-fills the form with the URL, page title, and selected price as the target. Or fill in manually.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-b">
+              <div class="step-h">Set a target price and click + Add Item</div>
+              <div class="step-t">The item is saved in your browser's localStorage. It persists across sessions — even closing the browser tab won't erase it. You can track up to dozens of products simultaneously.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-b">
+              <div class="step-h">Click ↻ to refresh any item</div>
+              <div class="step-t">Crawlr fetches the live page and extracts the latest price. The sparkline bar chart at the bottom of each row shows price history — green bars = lowest recorded price, red = highest. The delta badge shows the change vs last reading: <span style="color:var(--green);font-family:var(--mono);font-size:10px">▼ dropped</span> or <span style="color:var(--red);font-family:var(--mono);font-size:10px">▲ went up</span>.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">4</div>
+            <div class="step-b">
+              <div class="step-h">Watch for the TARGET HIT badge</div>
+              <div class="step-t">When the current price is at or below your target, a <span style="color:var(--green);font-family:var(--mono);font-size:10px">✓ TARGET HIT</span> badge appears on that item. Use Refresh All to bulk-update every tracked product at once.</div>
+            </div>
+          </div>
+        </div>
+        <div class="warn"><div class="warn-ico">⚠</div><div class="warn-txt"><strong>Limitation:</strong> Price refreshing uses the same browser proxy chain. Sites with heavy anti-bot protection (Flipkart, Amazon India, Myntra) will block live refreshes in the browser. Use the Python scraper locally for those sites — it bypasses most restrictions.</div></div>
+      </div>
+
+      <!-- 04 Export -->
+      <div class="am-sec">
+        <div class="am-secnum">04 — Data Export</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-gr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+          Download Your Data in 4 Clean Formats
+        </div>
+        <div class="step-t" style="margin-bottom:14px;font-size:12px">Click any export button in the toolbar (JSON / CSV / Markdown / HTML Report), choose which sections to include with the checkboxes, preview the output, and hit Download. Files are named automatically: <span class="inline-code">crawlr-wikipedia.org-2026-03-05.json</span></div>
+        <div class="twocol">
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--gold)"></div>JSON — Full structured data</div>
+            <ul>
+              <li>Nested objects with all fields intact</li>
+              <li>Numeric price values alongside raw strings</li>
+              <li>Includes export timestamp and author credit</li>
+              <li><strong>Best for:</strong> developers, APIs, data pipelines</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--green)"></div>CSV — Spreadsheet-ready</div>
+            <ul>
+              <li>Flat rows, one entry per line</li>
+              <li>Opens directly in Excel or Google Sheets</li>
+              <li>Sections separated by blank rows with headers</li>
+              <li><strong>Best for:</strong> analysis, filtering, sorting</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--accent)"></div>Markdown — Readable report</div>
+            <ul>
+              <li>Clean prose format with proper heading levels</li>
+              <li>Renders in GitHub, Notion, Obsidian, VS Code</li>
+              <li>Links formatted as [text](url)</li>
+              <li><strong>Best for:</strong> notes, documentation, sharing</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--purple)"></div>HTML Report — Standalone page</div>
+            <ul>
+              <li>Complete dark-themed self-contained webpage</li>
+              <li>All links are clickable, opens in any browser</li>
+              <li>No internet connection needed to view</li>
+              <li><strong>Best for:</strong> archiving, sharing with non-technical people</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tip"><div class="tip-ico">💡</div><div class="tip-txt"><strong>Pro tip:</strong> Uncheck sections you don't need before exporting. Deselecting Images keeps file sizes tiny. Deselecting Links gives you a clean text-only report. The preview box updates live so you know exactly what you're downloading.</div></div>
+      </div>
+
+      <!-- 05 Python mode -->
+      <div class="am-sec">
+        <div class="am-secnum">05 — Python Mode</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-r"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+          Run Locally for Unrestricted Scraping
+        </div>
+        <div class="step-t" style="margin-bottom:16px;font-size:12px;line-height:1.8">The browser scraper is constrained by CORS — many sites reject requests from third-party proxies. The Python scraper inside the ZIP has none of these limits. It sends real browser-like headers, handles encoding, follows redirects, and writes a clean <span class="inline-code">output/result.json</span> that this dashboard auto-loads on startup.</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-b">
+              <div class="step-h">Unzip and open a terminal in the project folder</div>
+              <div class="step-t">Requires Python 3.8 or newer. No pip installs needed — only Python standard library is used.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-b">
+              <div class="step-h">Run the scraper with any URL</div>
+              <code class="code-block">python scraper.py https://news.ycombinator.com
+
+# Custom output path
+python scraper.py https://example.com -o output/result.json</code>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-b">
+              <div class="step-h">Open this dashboard — data loads automatically</div>
+              <div class="step-t">The dashboard checks for <span class="inline-code">output/result.json</span> on every page load. If found, all tabs populate automatically. No need to paste a URL. Re-run the scraper and refresh the page to update.</div>
+            </div>
+          </div>
+        </div>
+        <div class="warn"><div class="warn-ico">⚠</div><div class="warn-txt"><strong>Hard wall:</strong> Even Python cannot bypass Cloudflare Bot Protection on sites like Flipkart, Amazon India, or Swiggy. Those sites require a headless browser (Selenium / Playwright) — which is beyond the scope of this tool.</div></div>
+      </div>
+
+      <!-- 06 Limitations -->
+      <div class="am-sec">
+        <div class="am-secnum">06 — Limitations</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-r"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          Know Before You Scrape
+        </div>
+        <div class="twocol">
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--red)"></div>Won't work on</div>
+            <ul>
+              <li><strong>Login-protected pages</strong> — needs a session</li>
+              <li><strong>Flipkart / Amazon India</strong> — Cloudflare blocks all proxies</li>
+              <li><strong>React / Vue SPAs</strong> — JS renders empty HTML shell</li>
+              <li><strong>PDF / image files</strong> — no document or OCR parsing</li>
+              <li><strong>Paywalled articles</strong> — content hidden behind auth</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-title"><div class="col-dot" style="background:var(--green)"></div>Works great on</div>
+            <ul>
+              <li><strong>Wikipedia</strong> — full article, all sections</li>
+              <li><strong>GitHub</strong> — repo pages, README, file listings</li>
+              <li><strong>Hacker News</strong> — posts, links, titles</li>
+              <li><strong>News sites</strong> — BBC, Reuters, The Hindu, NDTV</li>
+              <li><strong>Blogs &amp; docs</strong> — any server-rendered HTML</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 07 Tech Stack -->
+      <div class="am-sec">
+        <div class="am-secnum">07 — Tech Stack</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-t"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          How It's Built
+        </div>
+        <div class="stacklist">
+          <div class="stackrow"><div class="stack-lbl">Frontend</div><div class="stack-val">Vanilla HTML + CSS + JavaScript — zero frameworks, zero npm packages</div><span class="stack-badge atag t">Browser</span></div>
+          <div class="stackrow"><div class="stack-lbl">Python scraper</div><div class="stack-val">stdlib only — urllib, html.parser, json, re — no pip installs</div><span class="stack-badge atag gr">Python 3.8+</span></div>
+          <div class="stackrow"><div class="stack-lbl">CORS proxy chain</div><div class="stack-val">allorigins.win → corsproxy.io → codetabs.com (auto-fallback)</div><span class="stack-badge atag g">3 Proxies</span></div>
+          <div class="stackrow"><div class="stack-lbl">Price tracker</div><div class="stack-val">localStorage persistence, sparkline charts, delta badges</div><span class="stack-badge atag p">Local Storage</span></div>
+          <div class="stackrow"><div class="stack-lbl">Scrapy reference</div><div class="stack-val">Architecture mirrors Scrapy 2.14 — spiders, items, pipelines, settings</div><span class="stack-badge atag t">Scrapy 2.14</span></div>
+          <div class="stackrow"><div class="stack-lbl">Fonts</div><div class="stack-val">Syne (headings) · Lora (body) · Fira Code (data/mono) via Google Fonts</div><span class="stack-badge atag gr">Google Fonts</span></div>
+        </div>
+      </div>
+
+      <!-- 08 Author -->
+      <div class="am-sec">
+        <div class="am-secnum">08 — Author</div>
+        <div class="am-sectitle">
+          <div class="am-icon ic-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          Built By
+        </div>
+        <div class="author-card">
+          <div class="author-av">S</div>
+          <div>
+            <div class="author-name">Saksham Srivastava</div>
+            <div class="author-email">sakshamsrivastava7000@gmail.com</div>
+            <div class="author-bio">Built Crawlr as a full-stack web scraping project using Python and vanilla web technologies, designed around the Scrapy framework's philosophy — clean data extraction, structured pipelines, and portable output formats. All code, design, and logic written from scratch with zero external dependencies.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /am-body -->
+  </div><!-- /amod -->
+</div><!-- /amod-bg -->
+
+<!-- ══ FOOTER ════════════════════════════════════════════════ -->
+<footer>
+  <div class="fl">© <strong>Saksham Srivastava</strong> &nbsp;·&nbsp; sakshamsrivastava7000@gmail.com<br>Crawlr v2 — Scraper · Price Tracker · Data Exporter</div>
+  <div class="fr">Run <code style="color:var(--accent2)">python scraper.py &lt;url&gt;</code><br>then open this dashboard for local mode</div>
+</footer>
+
+<script>
+// ════════════════════════════════
+// STATE
+// ════════════════════════════════
+let DATA=null, FMT='json';
+let TRACKER=(()=>{try{return JSON.parse(localStorage.getItem('crawlr_v2')||'[]')}catch{return[]}})();
+const saveT=()=>{try{localStorage.setItem('crawlr_v2',JSON.stringify(TRACKER))}catch{}};
+const $=id=>document.getElementById(id);
+
+// ════════════════════════════════
+// TABS
+// ════════════════════════════════
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on'); $('panel-'+t.dataset.p).classList.add('on');
+}));
+function goTab(name){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  document.querySelector(`[data-p="${name}"]`).classList.add('on');
+  $('panel-'+name).classList.add('on');
+}
+
+// ════════════════════════════════
+// PROXIES
+// ════════════════════════════════
+const PROXIES=[
+  {name:'allorigins',   go:u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,   parse:async r=>(await r.json()).contents},
+  {name:'corsproxy.io', go:u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,                parse:r=>r.text()},
+  {name:'codetabs',     go:u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,parse:r=>r.text()},
+];
+async function proxyFetch(url){
+  let last;
+  for(const p of PROXIES){
+    try{
+      $('stxt').textContent=`Trying ${p.name}…`;
+      const r=await fetch(p.go(url),{signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const html=await p.parse(r);
+      if(!html||html.trim().length<80)throw new Error('Empty response');
+      return html;
+    }catch(e){last=e;}
+  }
+  throw new Error('All proxies failed: '+(last?.message||'unknown'));
+}
+
+// ════════════════════════════════
+// SCRAPE
+// ════════════════════════════════
+const sbar=$('sbar'),stxt=$('stxt'),statsEl=$('stats'),toolbar=$('toolbar'),tabsbar=$('tabsbar'),content=$('content'),errEl=$('err');
+const scrapeB=$('scrape-btn'),urlI=$('url-input');
+
+async function doScrape(){
+  let url=urlI.value.trim();
+  if(!url)return;
+  if(!url.startsWith('http'))url='https://'+url;
+  errEl.className='';errEl.innerHTML='';
+  [statsEl,toolbar,tabsbar,content].forEach(e=>e.className=e.className.replace(' vis','').trim());
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===0));
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('on',i===0));
+  scrapeB.disabled=true;scrapeB.textContent='…';
+  sbar.className='vis';stxt.textContent=`Fetching ${url}`;
+  try{
+    const html=await proxyFetch(url);
+    stxt.textContent='Parsing…';
+    DATA=parseHTML(html,url);
+    renderAll(DATA);
+    sbar.className='vis done';
+    stxt.textContent=`✓ Done — ${DATA.stats.headings}h · ${DATA.stats.paragraphs}p · ${DATA.stats.links}l · ${DATA.stats.images}i · ${DATA.stats.prices} prices`;
+    statsEl.className='vis';toolbar.className='vis';tabsbar.className='vis';content.className='vis';
+  }catch(e){
+    sbar.className='vis err';stxt.textContent='✗ Failed — site blocked all proxies';
+    errEl.className='on';
+    errEl.innerHTML=`<strong>Could not scrape this URL from the browser.</strong><br><br>
+      Sites like Flipkart and Amazon block browser proxies with anti-bot measures.<br><br>
+      <strong style="color:var(--gold)">Use the Python scraper (works on most sites):</strong><br>
+      <code style="color:var(--gold)">python scraper.py ${esc(url)}</code><br><br>
+      Then reopen this dashboard — it auto-loads <code>output/result.json</code>.`;
+  }
+  scrapeB.disabled=false;scrapeB.textContent='Scrape ↵';
+}
+
+// ════════════════════════════════
+// PARSE HTML
+// ════════════════════════════════
+function parseHTML(html,base){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const res=h=>{try{return new URL(h,base).href}catch{return h}};
+  const title=doc.querySelector('meta[property="og:title"]')?.content||doc.querySelector('title')?.textContent?.trim()||doc.querySelector('h1')?.textContent?.trim()||'';
+  const desc=doc.querySelector('meta[property="og:description"]')?.content||doc.querySelector('meta[name="description"]')?.content||doc.querySelector('p')?.textContent?.trim()?.slice(0,300)||'';
+  const heads=[];doc.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(el=>{const t=el.textContent.trim();if(t)heads.push({level:el.tagName.toLowerCase(),text:t})});
+  const paras=[];doc.querySelectorAll('p').forEach(el=>{const t=el.textContent.trim();if(t.length>40)paras.push(t.slice(0,600))});
+  const links=[];const sl=new Set();
+  doc.querySelectorAll('a[href]').forEach(el=>{
+    const h=el.getAttribute('href')?.trim();
+    if(!h||h.startsWith('#')||h.startsWith('javascript'))return;
+    const f=res(h);if(sl.has(f))return;sl.add(f);
+    links.push({url:f,text:(el.textContent.trim()||el.title||'').slice(0,120),external:!f.includes(new URL(base).hostname)});
+  });
+  const imgs=[];const si=new Set();
+  doc.querySelectorAll('img').forEach(el=>{
+    const s=el.src||el.getAttribute('data-src')||'';
+    if(!s||si.has(s))return;si.add(s);imgs.push({src:res(s),alt:el.alt?.trim()||''});
+  });
+  const prx=/[\$\£\€\₹\¥]\s*\d[\d,]*(?:\.\d{1,2})?|\d[\d,.]+\s*(?:USD|GBP|EUR|INR|Rs\.?)/gi;
+  const bt=doc.body?.textContent||'';
+  const rawP=[...new Set(bt.match(prx)||[])];
+  const prices=rawP.slice(0,50).map(r=>({raw:r,value:parseFloat(r.replace(/[^\d.]/g,''))||null}));
+  const meta={};doc.querySelectorAll('meta').forEach(el=>{const n=el.name||el.getAttribute('property')||'';const c=el.content?.trim()||'';if(n&&c)meta[n]=c;});
+  return{url:base,title,description:desc,headings:heads.slice(0,60),paragraphs:[...new Set(paras)].slice(0,40),links:links.slice(0,100),images:imgs.slice(0,60),prices,meta,scrapedAt:new Date().toISOString(),stats:{headings:heads.length,paragraphs:[...new Set(paras)].length,links:links.length,images:imgs.length,prices:rawP.length}};
+}
+
+// ════════════════════════════════
+// RENDER ALL
+// ════════════════════════════════
+function renderAll(d){
+  ['h','p','l','i','pr'].forEach((k,i)=>$('st-'+k).textContent=[d.stats.headings,d.stats.paragraphs,d.stats.links,d.stats.images,d.stats.prices][i]);
+  ['h','p','l','i','pr'].forEach((k,i)=>$('tc-'+k).textContent=[d.stats.headings,d.stats.paragraphs,d.stats.links,d.stats.images,d.stats.prices][i]);
+  $('tc-m').textContent=Object.keys(d.meta).length;
+  $('ov-title').textContent=d.title||'—';$('ov-url').textContent=d.url;$('ov-desc').textContent=d.description||'—';
+  rHeads(d.headings.slice(0,8),$('ov-heads'));
+  const ps=$('ov-prsec');
+  if(d.prices.length){ps.style.display='';rPrices(d.prices.slice(0,6),$('ov-prices'));}else ps.style.display='none';
+  rHeads(d.headings,$('g-heads'));
+  rParas(d.paragraphs,$('g-paras'));
+  rLinks(d.links,$('g-links'));
+  rImgs(d.images,$('g-imgs'));
+  rPrices(d.prices,$('g-prices'));
+  rMeta(d.meta,$('t-meta').querySelector('tbody'));
+  bindS('sch-h','g-heads',d.headings,rHeads,h=>h.text);
+  bindS('sch-p','g-paras',d.paragraphs,rParas,p=>p);
+  bindS('sch-l','g-links',d.links,rLinks,l=>l.url+' '+l.text);
+  bindS('sch-i','g-imgs',d.images,rImgs,i=>i.alt+' '+i.src);
+  trAutofill(d);renderTracker();updatePrev();
+}
+
+// ════════════════════════════════
+// CARD RENDERERS
+// ════════════════════════════════
+const mk=(t,c)=>{const e=document.createElement(t);e.className=c;return e;};
+function rHeads(items,c){c.innerHTML='';if(!items.length){c.innerHTML=emptyH('No headings');return;}items.forEach(h=>{const d=mk('div','card');d.innerHTML=`<span class="cbadge b${h.level}">${h.level.toUpperCase()}</span><div class="ctype">Heading</div><div class="cmain">${esc(h.text)}</div>`;c.appendChild(d);})}
+function rParas(items,c){c.innerHTML='';if(!items.length){c.innerHTML=emptyH('No paragraphs');return;}items.forEach(p=>{const d=mk('div','card');d.innerHTML=`<div class="ctype">Paragraph</div><div class="cmain" style="font-size:12px;-webkit-line-clamp:4">${esc(p)}</div>`;c.appendChild(d);})}
+function rLinks(items,c){c.innerHTML='';if(!items.length){c.innerHTML=emptyH('No links');return;}items.forEach(l=>{const d=mk('div','card');d.style.cursor='pointer';d.innerHTML=`${l.external?'<span class="cbadge bext">External</span>':''}<div class="ctype">Link</div><div class="cmain">${esc(l.text||l.url)}</div><div class="csub">${esc(l.url)}</div>`;d.addEventListener('click',()=>window.open(l.url,'_blank','noreferrer'));c.appendChild(d);})}
+function rImgs(items,c){c.innerHTML='';if(!items.length){c.innerHTML=emptyH('No images');return;}items.forEach(img=>{const d=mk('div','icard');const i=document.createElement('img');i.className='ithumb';i.src=img.src;i.alt=img.alt||'';i.loading='lazy';i.onerror=()=>i.style.display='none';d.appendChild(i);const f=mk('div','iinfo');f.innerHTML=`<div class="ialt">${esc(img.alt||'(no alt)')}</div><div class="isrc">${esc(img.src)}</div>`;d.appendChild(f);c.appendChild(d);})}
+function rPrices(items,c){c.innerHTML='';if(!items.length){c.innerHTML=emptyH('No prices detected');return;}items.forEach(p=>{const d=mk('div','card');d.innerHTML=`<span class="cbadge bprice">Price</span><div class="ctype">Detected</div><div class="cmain" style="font-size:22px;font-family:var(--lora)">${esc(p.raw||p)}</div>`;c.appendChild(d);})}
+function rMeta(meta,tb){tb.innerHTML='';const ks=Object.keys(meta);if(!ks.length){tb.innerHTML=`<tr><td colspan="2" style="padding:22px;text-align:center;color:var(--dim);font-family:var(--mono);font-size:11px">No meta tags</td></tr>`;return;}ks.forEach(k=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(k)}</td><td>${esc(meta[k])}</td>`;tb.appendChild(tr);})}
+function bindS(iid,cid,all,fn,get){const inp=$(iid),con=$(cid);if(!inp)return;inp.value='';inp.addEventListener('input',()=>{const q=inp.value.toLowerCase().trim();fn(q?all.filter(x=>get(x).toLowerCase().includes(q)):all,con);});}
+
+// ════════════════════════════════
+// PRICE TRACKER
+// ════════════════════════════════
+function trAutofill(d){
+  const w=$('tr-af'),b=$('tr-afbtns');
+  if(!d.prices.length){w.style.display='none';return;}
+  w.style.display='block';b.innerHTML='';
+  d.prices.slice(0,8).forEach(p=>{
+    const btn=document.createElement('button');btn.className='trafbtn';btn.textContent=p.raw;
+    btn.addEventListener('click',()=>{$('tr-target').value=p.value||'';$('tr-url').value=d.url;$('tr-name').value=d.title.slice(0,50);goTab('tracker');});
+    b.appendChild(btn);
+  });
+}
+function renderTracker(){
+  const list=$('tr-list'),n=TRACKER.length;
+  $('tc-tr').textContent=n;$('tr-cnt').textContent=n;
+  if(!n){list.innerHTML='<div class="trempty">No items yet. Add a product above.</div>';return;}
+  list.innerHTML='';
+  TRACKER.forEach((item,idx)=>{
+    const h=item.history||[];
+    const cur=h.length?h[h.length-1].price:null;
+    const prev=h.length>1?h[h.length-2].price:null;
+    let dHtml='';
+    if(cur!==null&&prev!==null){const d=cur-prev,pct=((d/prev)*100).toFixed(1);if(d>0)dHtml=`<span class="delta dup">▲ +${fp(d,item)} (${pct}%)</span>`;else if(d<0)dHtml=`<span class="delta ddn">▼ ${fp(d,item)} (${pct}%)</span>`;else dHtml='<span class="delta deq">— Unchanged</span>';}
+    else if(cur!==null)dHtml='<span class="delta deq">— First reading</span>';
+    const hit=item.target&&cur!==null&&cur<=item.target;
+    const pills=h.slice(-5).reverse().map(x=>`<span title="${new Date(x.at).toLocaleString()}">${fp(x.price,item)}</span>`).join('');
+    const spk=mkSpark(h.map(x=>x.price));
+    const row=mk('div','trrow');
+    row.innerHTML=`<div><div class="triname">${esc(item.name)} ${hit?'<span style="color:var(--green);font-size:9px;font-family:var(--mono)">✓ TARGET HIT</span>':''}</div><div class="triurl">${esc(item.url)}</div><div class="trihist">${pills||'<span style="color:var(--muted)">No readings yet — click ↻ to fetch</span>'}</div>${spk}</div><div class="triprice"><div class="tricur">${cur!==null?fp(cur,item):'—'}</div>${item.target?`<div class="tritgt">target: ${fp(item.target,item)}</div>`:''}</div><div>${dHtml}</div><div class="triactions"><button class="tribtn" data-a="refresh" data-i="${idx}" title="Refresh">↻</button><button class="tribtn del" data-a="delete" data-i="${idx}" title="Remove">✕</button></div>`;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{
+    const i=parseInt(b.dataset.i);
+    if(b.dataset.a==='delete'){TRACKER.splice(i,1);saveT();renderTracker();}
+    else refreshItem(i);
+  }));
+}
+function mkSpark(prices){
+  if(prices.length<2)return'';
+  const mn=Math.min(...prices),mx=Math.max(...prices),rng=mx-mn||1;
+  return`<div class="spark">${prices.slice(-14).map(p=>{const h=Math.max(3,Math.round(((p-mn)/rng)*20));const col=p<=mn?'var(--green)':p>=mx?'var(--red)':'var(--muted)';return`<div class="sbar" style="height:${h}px;background:${col}" title="${p}"></div>`;}).join('')}</div>`;
+}
+function fp(v,item){if(v===null||v===undefined)return'—';const s=item?.currency||'';return`${s}${parseFloat(v).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2})}`;}
+
+$('tr-add').addEventListener('click',()=>{
+  const name=$('tr-name').value.trim(),url=$('tr-url').value.trim(),target=parseFloat($('tr-target').value)||null;
+  if(!name||!url){alert('Name and URL are required.');return;}
+  let cur='';if(DATA?.prices?.length){const r=DATA.prices[0].raw||'';if(r.includes('₹'))cur='₹';else if(r.includes('$'))cur='$';else if(r.includes('£'))cur='£';else if(r.includes('€'))cur='€';}
+  TRACKER.push({name,url,target,currency:cur,history:[],addedAt:new Date().toISOString()});
+  saveT();$('tr-name').value='';$('tr-url').value='';$('tr-target').value='';
+  renderTracker();
+});
+async function refreshItem(idx){
+  const item=TRACKER[idx];if(!item)return;
+  try{
+    sbar.className='vis';stxt.textContent=`Refreshing: ${item.name}…`;
+    const html=await proxyFetch(item.url);
+    const parsed=parseHTML(html,item.url);
+    const best=parsed.prices.find(p=>p.value)||parsed.prices[0];
+    if(best?.value){item.history.push({price:best.value,raw:best.raw,at:new Date().toISOString()});if(item.history.length>30)item.history=item.history.slice(-30);saveT();renderTracker();sbar.className='vis done';stxt.textContent=`✓ Updated ${item.name}: ${best.raw}`;}
+    else{sbar.className='vis err';stxt.textContent=`✗ No price found for ${item.name}`;}
+  }catch(e){sbar.className='vis err';stxt.textContent=`✗ Failed: ${item.name}`;}
+}
+$('tr-rfall').addEventListener('click',async()=>{for(let i=0;i<TRACKER.length;i++)await refreshItem(i);});
+$('tr-exp').addEventListener('click',()=>{
+  if(!TRACKER.length)return;
+  const rows=['Name,URL,Target,Currency,Current Price,Previous Price,Change %,Readings,Added At'];
+  TRACKER.forEach(item=>{const h=item.history;const cur=h.length?h[h.length-1].price:'';const prev=h.length>1?h[h.length-2].price:'';const chg=cur&&prev?(((cur-prev)/prev)*100).toFixed(2)+'%':'';rows.push([`"${item.name}"`,`"${item.url}"`,item.target||'',item.currency||'',cur,prev,chg,h.length,`"${item.addedAt}"`].join(','));});
+  dlFile('crawlr-tracker.csv',rows.join('\n'),'text/csv');
+});
+
+// ════════════════════════════════
+// EXPORT MODAL
+// ════════════════════════════════
+const emodBg=$('emod-bg');
+function openExport(fmt){if(!DATA)return;FMT=fmt||'json';document.querySelectorAll('.emf').forEach(f=>f.classList.toggle('on',f.dataset.fmt===FMT));updatePrev();emodBg.classList.add('open');}
+$('em-x').addEventListener('click',()=>emodBg.classList.remove('open'));
+emodBg.addEventListener('click',e=>{if(e.target===emodBg)emodBg.classList.remove('open');});
+document.querySelectorAll('.emf').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.emf').forEach(x=>x.classList.remove('on'));f.classList.add('on');FMT=f.dataset.fmt;updatePrev();}));
+document.querySelectorAll('.emck input').forEach(cb=>cb.addEventListener('change',()=>{cb.closest('.emck').classList.toggle('on',cb.checked);updatePrev();}));
+function getSecs(){return[...document.querySelectorAll('.emck input:checked')].map(c=>c.value);}
+function bJSON(secs){if(!DATA)return{};const o={},d=DATA;if(secs.includes('overview'))o.overview={url:d.url,title:d.title,description:d.description,scrapedAt:d.scrapedAt};if(secs.includes('headings'))o.headings=d.headings;if(secs.includes('paragraphs'))o.paragraphs=d.paragraphs;if(secs.includes('links'))o.links=d.links;if(secs.includes('images'))o.images=d.images;if(secs.includes('prices'))o.prices=d.prices.map(p=>({raw:p.raw||p,value:p.value}));if(secs.includes('meta'))o.meta=d.meta;o._meta={exportedAt:new Date().toISOString(),by:'Crawlr v2 — Saksham Srivastava'};return o;}
+function bCSV(secs){const r=[],d=DATA;if(secs.includes('headings')){r.push('Section,Level,Content');d.headings.forEach(h=>r.push(`Headings,${h.level},"${e2(h.text)}"`))}if(secs.includes('paragraphs')){r.push('');r.push('Section,,Content');d.paragraphs.forEach(p=>r.push(`Paragraphs,,"${e2(p)}"`))}if(secs.includes('links')){r.push('');r.push('Section,URL,Text,External');d.links.forEach(l=>r.push(`Links,"${e2(l.url)}","${e2(l.text)}",${l.external}`))}if(secs.includes('images')){r.push('');r.push('Section,URL,Alt Text');d.images.forEach(i=>r.push(`Images,"${e2(i.src)}","${e2(i.alt)}"`))}if(secs.includes('prices')){r.push('');r.push('Section,,Price,Value');d.prices.forEach(p=>r.push(`Prices,,"${e2(p.raw||p)}",${p.value||''}`))}if(secs.includes('meta')){r.push('');r.push('Section,Key,Value');Object.entries(d.meta).forEach(([k,v])=>r.push(`Meta,"${e2(k)}","${e2(v)}"`))}return r.join('\n');}
+function bMD(secs){const d=DATA,l=[];l.push(`# ${d.title}`);l.push(`\n> **Source:** ${d.url}  \n> **Scraped:** ${d.scrapedAt||'—'}  \n> *© Saksham Srivastava — sakshamsrivastava7000@gmail.com*\n`);if(secs.includes('overview')&&d.description)l.push(`## Description\n\n${d.description}\n`);if(secs.includes('prices')&&d.prices.length){l.push('## Prices\n');d.prices.forEach(p=>l.push(`- **${p.raw||p}**${p.value?` (${p.value})`:''}`));l.push('');}if(secs.includes('headings')&&d.headings.length){l.push('## Headings\n');d.headings.forEach(h=>l.push(`${'#'.repeat(parseInt(h.level[1])+1)} ${h.text}`));l.push('');}if(secs.includes('paragraphs')&&d.paragraphs.length){l.push('## Text\n');d.paragraphs.slice(0,20).forEach(p=>l.push(`${p}\n`));}if(secs.includes('links')&&d.links.length){l.push('## Links\n');d.links.slice(0,50).forEach(li=>l.push(`- [${li.text||li.url}](${li.url})${li.external?' *(ext)*':''}`));l.push('');}if(secs.includes('meta')&&Object.keys(d.meta).length){l.push('## Meta\n');Object.entries(d.meta).forEach(([k,v])=>l.push(`| ${k} | ${v} |`));}return l.join('\n');}
+function bHTML(secs){const d=DATA;const pl=secs.includes('prices')&&d.prices.length?`<section><h2>Prices</h2><ul>${d.prices.map(p=>`<li><strong>${esc(p.raw||p)}</strong>${p.value?` = ${p.value}`:''}</li>`).join('')}</ul></section>`:'';const hl=secs.includes('headings')&&d.headings.length?`<section><h2>Headings</h2>${d.headings.map(h=>`<${h.level} class="hd">${esc(h.text)}</${h.level}>`).join('')}</section>`:'';const ll=secs.includes('links')&&d.links.length?`<section><h2>Links</h2><ul>${d.links.slice(0,60).map(li=>`<li><a href="${esc(li.url)}" target="_blank">${esc(li.text||li.url)}</a>${li.external?' <sup>ext</sup>':''}</li>`).join('')}</ul></section>`:'';const tl=secs.includes('paragraphs')&&d.paragraphs.length?`<section><h2>Text</h2>${d.paragraphs.slice(0,20).map(p=>`<p>${esc(p)}</p>`).join('')}</section>`:'';const ml=secs.includes('meta')&&Object.keys(d.meta).length?`<section><h2>Meta</h2><table>${Object.entries(d.meta).map(([k,v])=>`<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table></section>`:'';return`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Crawlr — ${esc(d.title)}</title><style>*{box-sizing:border-box}body{font-family:system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 24px;background:#0f0f0f;color:#ccc}h1{color:#eee}h2{color:#999;border-bottom:1px solid #2a2a2a;padding-bottom:8px;margin-top:32px;font-size:13px;text-transform:uppercase;letter-spacing:.08em}.hd{color:#ddd;margin:.3em 0}a{color:#7eb8a4}ul{padding-left:18px}li{margin:5px 0}p{line-height:1.7;color:#999}.meta{font-size:11px;color:#555;margin-bottom:32px}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;border:1px solid #2a2a2a;font-size:12px;text-align:left}th{background:#1a1a1a;color:#888;font-size:10px;text-transform:uppercase}footer{margin-top:60px;border-top:1px solid #2a2a2a;padding-top:14px;font-size:11px;color:#444}section{margin-bottom:28px}</style></head><body><h1>${esc(d.title)}</h1><div class="meta">Source: <a href="${esc(d.url)}">${esc(d.url)}</a> · Scraped: ${d.scrapedAt||'—'}</div>${secs.includes('overview')&&d.description?`<section><h2>Description</h2><p>${esc(d.description)}</p></section>`:''}${pl}${hl}${tl}${ll}${ml}<footer>© Saksham Srivastava · Exported by Crawlr v2</footer></body></html>`;}
+function updatePrev(){const p=$('em-prev');if(!DATA){p.textContent='Scrape a URL first…';return;}const secs=getSecs();try{if(FMT==='json')p.textContent=JSON.stringify(bJSON(secs),null,2).slice(0,900)+'…';else if(FMT==='csv')p.textContent=bCSV(secs).slice(0,900)+'…';else if(FMT==='markdown')p.textContent=bMD(secs).slice(0,900)+'…';else p.textContent=bHTML(secs).slice(0,900)+'…';}catch(e){p.textContent='Preview error: '+e.message;}}
+$('em-dl').addEventListener('click',()=>{
+  if(!DATA)return;
+  const secs=getSecs(),domain=new URL(DATA.url).hostname.replace('www.',''),ts=new Date().toISOString().slice(0,10);
+  let ct,fn,mime;
+  if(FMT==='json'){ct=JSON.stringify(bJSON(secs),null,2);fn=`crawlr-${domain}-${ts}.json`;mime='application/json';}
+  else if(FMT==='csv'){ct=bCSV(secs);fn=`crawlr-${domain}-${ts}.csv`;mime='text/csv';}
+  else if(FMT==='markdown'){ct=bMD(secs);fn=`crawlr-${domain}-${ts}.md`;mime='text/markdown';}
+  else{ct=bHTML(secs);fn=`crawlr-${domain}-${ts}.html`;mime='text/html';}
+  dlFile(fn,ct,mime);emodBg.classList.remove('open');
+});
+$('btn-json').addEventListener('click',()=>openExport('json'));
+$('btn-csv').addEventListener('click',()=>openExport('csv'));
+$('btn-md').addEventListener('click',()=>openExport('markdown'));
+$('btn-html').addEventListener('click',()=>openExport('html'));
+$('btn-track').addEventListener('click',()=>{goTab('tracker');if(!content.classList.contains('vis')){content.className='vis';tabsbar.className='vis';toolbar.className='vis';}});
+
+// ════════════════════════════════
+// ABOUT MODAL
+// ════════════════════════════════
+const amodBg=$('amod-bg');
+$('btn-about').addEventListener('click',()=>amodBg.classList.add('open'));
+$('amod-close').addEventListener('click',()=>amodBg.classList.remove('open'));
+amodBg.addEventListener('click',e=>{if(e.target===amodBg)amodBg.classList.remove('open');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){amodBg.classList.remove('open');emodBg.classList.remove('open');}});
+
+// ════════════════════════════════
+// UTILS
+// ════════════════════════════════
+function dlFile(fn,ct,mime){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ct],{type:mime+';charset=utf-8'}));a.download=fn;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function e2(s){return String(s||'').replace(/"/g,"'");}
+function emptyH(m){return`<div class="empty">${m}</div>`;}
+
+// ════════════════════════════════
+// INIT
+// ════════════════════════════════
+scrapeB.addEventListener('click',doScrape);
+urlI.addEventListener('keydown',e=>{if(e.key==='Enter')doScrape();});
+$('tc-tr').textContent=TRACKER.length;
+if(TRACKER.length){renderTracker();tabsbar.className='vis';toolbar.className='vis';content.className='vis';}
+(async()=>{
+  try{
+    const r=await fetch('../output/result.json');if(!r.ok)return;
+    DATA=await r.json();if(!DATA?.url)return;
+    urlI.value=DATA.url;renderAll(DATA);
+    sbar.className='vis done';stxt.textContent='✓ Loaded from result.json';
+    statsEl.className='vis';toolbar.className='vis';tabsbar.className='vis';content.className='vis';
+  }catch{}
+})();
+</script>
+</body>
+</html>
