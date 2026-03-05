@@ -1,115 +1,6 @@
 <div align="center">
 
-<!-- ANIMATED LOGO -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" width="480" height="160">
-  <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&amp;family=Lora:ital,wght@1,600&amp;display=swap');
-
-      .bg { fill: #070707; }
-      .logo-main {
-        font-family: 'Syne', sans-serif;
-        font-size: 72px;
-        font-weight: 800;
-        fill: #edebe4;
-        letter-spacing: -4px;
-      }
-      .logo-em {
-        font-family: 'Lora', serif;
-        font-style: italic;
-        font-weight: 600;
-        fill: #72bba0;
-      }
-      .badge-text {
-        font-family: 'Courier New', monospace;
-        font-size: 9px;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        fill: #3f8066;
-      }
-      .orb { opacity: 0; animation: orbIn 1.4s ease forwards; }
-      .logo-text { opacity: 0; animation: fadeUp 0.9s 0.2s ease forwards; }
-      .badge { opacity: 0; animation: fadeUp 0.9s 0.1s ease forwards; }
-      .scan { animation: scanLoop 4s ease-in-out infinite; }
-      .dot1 { animation: pulse 1.2s 0s ease-in-out infinite; }
-      .dot2 { animation: pulse 1.2s 0.4s ease-in-out infinite; }
-      .dot3 { animation: pulse 1.2s 0.8s ease-in-out infinite; }
-      .spider-line { stroke-dasharray: 100; stroke-dashoffset: 100; animation: drawLine 1.5s 0.6s ease forwards; }
-      .cursor-blink { animation: blink 0.85s step-end infinite; }
-
-      @keyframes orbIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes scanLoop { 0% { transform: translateY(-20px); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 0.3; } 100% { transform: translateY(160px); opacity: 0; } }
-      @keyframes pulse { 0%, 100% { opacity: 1; r: 3; } 50% { opacity: 0.3; r: 1.5; } }
-      @keyframes drawLine { to { stroke-dashoffset: 0; } }
-      @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-    </style>
-
-    <!-- Glow gradient -->
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#3f8066" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#3f8066" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#9077c5" stop-opacity="0.07"/>
-      <stop offset="100%" stop-color="#9077c5" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Dot grid pattern -->
-    <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-      <circle cx="12" cy="12" r="0.8" fill="#222222"/>
-    </pattern>
-    <mask id="fade-mask">
-      <radialGradient id="mask-grad" cx="50%" cy="50%" r="50%">
-        <stop offset="20%" stop-color="white"/>
-        <stop offset="100%" stop-color="black"/>
-      </radialGradient>
-      <rect width="480" height="160" fill="url(#mask-grad)"/>
-    </mask>
-  </defs>
-
-  <!-- Background -->
-  <rect width="480" height="160" class="bg" rx="12"/>
-
-  <!-- Dot grid -->
-  <rect width="480" height="160" fill="url(#dots)" mask="url(#fade-mask)" opacity="0.6"/>
-
-  <!-- Glow orbs -->
-  <ellipse class="orb" cx="240" cy="60" rx="280" ry="120" fill="url(#glow)"/>
-  <ellipse class="orb" cx="400" cy="130" rx="160" ry="80" fill="url(#glow2)"/>
-
-  <!-- Scan line -->
-  <rect class="scan" x="0" y="0" width="480" height="50" fill="url(#glow)" opacity="0.4"/>
-
-  <!-- Badge -->
-  <g class="badge">
-    <rect x="162" y="14" width="156" height="20" rx="10" fill="rgba(63,128,102,0.08)" stroke="rgba(63,128,102,0.2)" stroke-width="1"/>
-    <circle class="dot1" cx="173" cy="24" r="3" fill="#3f8066"/>
-    <text x="182" y="28" class="badge-text">Universal Scraper</text>
-  </g>
-
-  <!-- Spider web accent lines -->
-  <line class="spider-line" x1="30" y1="20" x2="80" y2="80" stroke="#3f8066" stroke-width="0.6" opacity="0.4"/>
-  <line class="spider-line" x1="80" y1="80" x2="30" y2="140" stroke="#3f8066" stroke-width="0.6" opacity="0.4"/>
-  <line class="spider-line" x1="80" y1="80" x2="140" y2="80" stroke="#3f8066" stroke-width="0.6" opacity="0.3"/>
-  <line class="spider-line" x1="450" y1="20" x2="400" y2="80" stroke="#9077c5" stroke-width="0.6" opacity="0.3"/>
-  <line class="spider-line" x1="400" y1="80" x2="450" y2="140" stroke="#9077c5" stroke-width="0.6" opacity="0.3"/>
-
-  <!-- Main logo text -->
-  <text class="logo-text" x="240" y="115" text-anchor="middle" class="logo-main">
-    <tspan class="logo-main">Crawl</tspan><tspan class="logo-main logo-em">r</tspan>
-  </text>
-
-  <!-- Pulsing dots decoration -->
-  <circle class="dot2" cx="115" cy="95" r="3" fill="#72bba0" opacity="0.6"/>
-  <circle class="dot3" cx="365" cy="95" r="3" fill="#72bba0" opacity="0.6"/>
-
-  <!-- Cursor blink after logo -->
-  <rect class="cursor-blink" x="308" y="88" width="5" height="14" fill="#72bba0" rx="1"/>
-
-  <!-- Bottom tagline -->
-  <text x="240" y="148" text-anchor="middle" font-family="'Courier New', monospace" font-size="8.5" letter-spacing="2.5" fill="#595959" text-transform="uppercase">BROWSER · PYTHON · ZERO DEPS · 4 EXPORT FORMATS</text>
-</svg>
+<img src="assets/logo.svg" alt="Crawlr Logo" width="480"/>
 
 <br/>
 
@@ -316,7 +207,7 @@ Built Crawlr as a full-stack web scraping project using Python and vanilla web t
 
 <div align="center">
 
-© 2025 Saksham Srivastava &nbsp;·&nbsp; Crawlr v2 — Universal Web Scraper
+© 2026 Saksham Srivastava &nbsp;·&nbsp; Crawlr v2 — Universal Web Scraper
 
 *Zero dependencies. Start to finish.*
 
